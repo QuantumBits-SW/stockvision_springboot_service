@@ -15,7 +15,7 @@ public class MainController {
 	@GetMapping("/")
 	public String test()
 	{
-		return "Hello StockVision";
+		return "Hello StockVision ";
 	}
 
 }

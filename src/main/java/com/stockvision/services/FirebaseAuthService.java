@@ -36,7 +36,7 @@ public class FirebaseAuthService {
 		firebaseAuth = FirebaseAuth.getInstance();
 	}
 	
-	public boolean verifyToken(String token)
+	public FirebaseToken verifyToken(String token)
 	{
 		try {
 			if(firebaseAuth == null)
@@ -44,11 +44,10 @@ public class FirebaseAuthService {
 				initializeFirebaseAuth();
 			}
 			FirebaseToken decodeToken = firebaseAuth.verifyIdToken(token);
-			//further actions needs to be done.
+			return decodeToken;
 		} catch (FirebaseAuthException e) {
 			e.printStackTrace();
-			return false;
+			return null;
 		}
-		return true;
 	}
 }

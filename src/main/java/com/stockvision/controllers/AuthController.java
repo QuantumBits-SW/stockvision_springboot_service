@@ -55,9 +55,9 @@ public class AuthController {
 					 user.setEmail(email);
 					 user.setContact(userRequest.getContact());
 					 
-					 userRepository.save(user);
+					 User mongoUser = userRepository.save(user);
 					 
-					return ResponseEntity.ok(user);
+					return ResponseEntity.ok(mongoUser);
 
 				 }	
 				 else {

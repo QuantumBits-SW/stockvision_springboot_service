@@ -14,6 +14,6 @@ public class User {
     private String name;
     private String email;
     private String stripeAccountId; // For withdrawals
-    private boolean isSocialLogin;  // true if signed in via Google
+    private boolean socialLogin;  // Use 'socialLogin' instead of 'isSocialLogin'
     private Date createdAt = new Date();
 }

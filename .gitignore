@@ -30,7 +30,7 @@ build/
 !**/src/test/**/build/
 
 ### VS Code ###
-.vscode/
+src/main/resources/
 serviceAccounyKey.json
 # Ignore application properties file
 src/main/resources/application.properties

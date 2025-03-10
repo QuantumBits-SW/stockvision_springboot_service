@@ -29,8 +29,5 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
-src/main/resources/
-serviceAccounyKey.json
-# Ignore application properties file
+src/main/resources/firebase-service-account.json
 src/main/resources/application.properties

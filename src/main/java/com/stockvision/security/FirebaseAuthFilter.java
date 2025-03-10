@@ -18,30 +18,21 @@ import java.io.IOException;
 @Component
 public class FirebaseAuthFilter extends OncePerRequestFilter {
 
-<<<<<<< HEAD
     @Autowired
     private UserRepository userRepository;
-=======
-    public final UserRepository userRepository;
 
     public FirebaseAuthFilter(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
-
->>>>>>> eedf6ad52a2e6940ad7bbd1ad8c9a19e228b57bc
-
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-<<<<<<< HEAD
-=======
         if (request.getRequestURI().equals("/stockvision/api/stripe/webhook")) {
             filterChain.doFilter(request, response);
             return;
         }
 
->>>>>>> eedf6ad52a2e6940ad7bbd1ad8c9a19e228b57bc
         String header = request.getHeader("Authorization");
 
         if (header == null || !header.startsWith("Bearer ")) {
@@ -65,11 +56,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
                 newUser.setId(userId);
                 newUser.setEmail(email);
                 newUser.setName(name);
-<<<<<<< HEAD
-                newUser.setIsSocialLogin(true);
-=======
                 newUser.setSocialLogin(true);
->>>>>>> eedf6ad52a2e6940ad7bbd1ad8c9a19e228b57bc
                 userRepository.save(newUser);
             }
 

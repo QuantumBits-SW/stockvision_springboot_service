@@ -1,53 +1,112 @@
 package com.stockvision.controllers;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
-import com.stripe.model.checkout.Session;
+import com.stripe.net.Webhook;
 import com.stockvision.models.Wallet;
 import com.stockvision.repositories.WalletRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import javax.servlet.http.HttpServletRequest;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/stripe")
 public class StripeWebhookController {
 
+    @Value("${stripe.webhook.secret}")
+    private String webhookSecret;
+
+    private final WalletRepository walletRepository;
+    private static final Logger LOGGER = LoggerFactory.getLogger(StripeWebhookController.class);
+    private final ObjectMapper objectMapper = new ObjectMapper(); // ✅ JSON parser
+
     @Autowired
-    private WalletRepository walletRepository;
+    public StripeWebhookController(WalletRepository walletRepository) {
+        this.walletRepository = walletRepository;
+    }
 
     @PostMapping("/webhook")
-    public ResponseEntity<?> handleStripeWebhook(HttpServletRequest request) {
+    public ResponseEntity<?> handleStripeWebhook(HttpServletRequest request, @RequestHeader("Stripe-Signature") String signature) {
         try {
-            String payload = new BufferedReader(request.getReader()).lines().collect(Collectors.joining());
-            Event event = Event.GSON.fromJson(payload, Event.class);
+            byte[] payloadBytes = IOUtils.toByteArray(request.getInputStream());
+            String payload = new String(payloadBytes, StandardCharsets.UTF_8);
 
-            if ("checkout.session.completed".equals(event.getType())) {
-                Session session = (Session) event.getDataObjectDeserializer().getObject().get();
-                String userId = session.getClientReferenceId();
-                double amount = session.getAmountTotal() / 100.0; // Convert to dollars
+            Event event = Webhook.constructEvent(payload, signature, webhookSecret);
+            LOGGER.info("Received Webhook Event: {}", event.getType());
 
-                Wallet wallet = walletRepository.findByUserId(userId);
-                if (wallet == null) {
-                    wallet = new Wallet();
-                    wallet.setUserId(userId);
-                    wallet.setBalance(amount);
-                } else {
-                    wallet.setBalance(wallet.getBalance() + amount);
-                }
-                walletRepository.save(wallet);
+            JsonNode jsonNode = objectMapper.readTree(payload);
+            JsonNode dataObject = jsonNode.get("data").get("object");
 
-                return ResponseEntity.ok(Map.of("status", "success", "message", "Payment successful", "amount", amount));
+            switch (event.getType()) {
+                case "checkout.session.completed":
+                    return handleCheckoutSessionCompleted(dataObject);
+                default:
+                    LOGGER.warn("Unhandled event type: {}", event.getType());
+                    return ResponseEntity.ok("Webhook received but event type is unhandled.");
             }
 
-            return ResponseEntity.ok(Map.of("status", "ignored", "message", "Event not processed"));
-
+        } catch (SignatureVerificationException e) {
+            LOGGER.error("Invalid webhook signature: {}", e.getMessage());
+            return ResponseEntity.status(400).body("Invalid signature: " + e.getMessage());
         } catch (IOException e) {
-            return ResponseEntity.status(400).body(Map.of("error", "Webhook error", "message", e.getMessage()));
+            LOGGER.error("Webhook error: {}", e.getMessage());
+            return ResponseEntity.status(400).body("Webhook error: " + e.getMessage());
+        } catch (Exception e) {
+            LOGGER.error("Unexpected error: {}", e.getMessage());
+            return ResponseEntity.status(500).body("Internal Server Error: " + e.getMessage());
         }
     }
+
+    /**
+     * Handles Checkout Session Completed events to update the user's wallet.
+     */
+    private ResponseEntity<?> handleCheckoutSessionCompleted(JsonNode sessionNode) {
+        if (sessionNode == null || !sessionNode.has("client_reference_id")) {
+            LOGGER.error("Session object missing or incorrect in webhook event.");
+            return ResponseEntity.status(400).body("Invalid webhook: Session data missing or incorrect");
+        }
+
+        String userId = sessionNode.get("client_reference_id").asText();
+        if ((userId == null || userId.isEmpty()) && sessionNode.has("metadata")) {
+            userId = sessionNode.get("metadata").get("userId").asText();
+        }
+
+        if (userId == null || userId.isEmpty()) {
+            LOGGER.error("User ID is missing in webhook event.");
+            return ResponseEntity.status(400).body("Invalid session: userId missing");
+        }
+
+        String paymentStatus = sessionNode.has("payment_status") ? sessionNode.get("payment_status").asText() : "";
+        if (!"paid".equalsIgnoreCase(paymentStatus)) {
+            LOGGER.warn("Payment not completed yet for session.");
+            return ResponseEntity.ok("Webhook received but payment not completed yet.");
+        }
+
+        double amount = sessionNode.has("amount_total") ? sessionNode.get("amount_total").asDouble() / 100.0 : 0.0;
+        LOGGER.info("Updating wallet: userId={}, amount=${}", userId, amount);
+
+        Wallet wallet = walletRepository.findByUserId(userId);
+        if (wallet == null) {
+            wallet = new Wallet();
+            wallet.setUserId(userId);
+            wallet.setBalance(amount);
+        } else {
+            wallet.setBalance(wallet.getBalance() + amount);
+        }
+        walletRepository.save(wallet);
+
+        LOGGER.info("Wallet updated successfully for userId: {}", userId);
+        return ResponseEntity.ok("Wallet updated successfully");
+    }
+
 }

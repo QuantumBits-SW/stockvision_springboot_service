@@ -15,5 +15,7 @@ public class User {
     private String email;
     private String stripeAccountId; // For withdrawals
     private boolean socialLogin;
+    private boolean socialLogin;
+    private boolean socialLogin;
     private Date createdAt = new Date();
 }

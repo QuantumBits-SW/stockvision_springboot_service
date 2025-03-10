@@ -14,6 +14,10 @@ public class User {
     private String name;
     private String email;
     private String stripeAccountId; // For withdrawals
+<<<<<<< Updated upstream
     private boolean socialLogin;
+=======
+    private boolean socialLogin;  // Use 'socialLogin' instead of 'isSocialLogin'
+>>>>>>> Stashed changes
     private Date createdAt = new Date();
 }

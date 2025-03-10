@@ -5,19 +5,10 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import com.stockvision.models.User;
 import com.stockvision.repositories.UserRepository;
-<<<<<<< HEAD
-=======
 import jakarta.servlet.http.HttpServletRequest;
->>>>>>> eedf6ad52a2e6940ad7bbd1ad8c9a19e228b57bc
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-<<<<<<< HEAD
-import javax.servlet.http.HttpServletRequest;
-=======
-
->>>>>>> eedf6ad52a2e6940ad7bbd1ad8c9a19e228b57bc
 
 @RestController
 @RequestMapping("/api/user")

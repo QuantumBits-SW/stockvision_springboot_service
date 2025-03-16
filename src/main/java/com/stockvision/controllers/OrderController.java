@@ -16,6 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
+@CrossOrigin(origins = "http://localhost:5173/")
 public class OrderController {
 
     @Autowired
@@ -37,17 +38,18 @@ public class OrderController {
             return ResponseEntity.badRequest().body("Insufficient funds");
         }
 
-        // Deduct from wallet balance
-        wallet.setBalance(wallet.getBalance() - (order.getQuantity() * order.getPrice()));
+        // Deduct from wallet
+        double totalCost = order.getQuantity() * order.getPrice();
+        wallet.setBalance(wallet.getBalance() - totalCost);
         walletRepository.save(wallet);
 
-        // Save the order
+        // Save Order
         order.setUserId(userId);
-        order.setStatus("executed"); // Assume market orders execute immediately
+        order.setStatus("executed");
         order.setTimestamp(new Date());
         orderRepository.save(order);
 
-        // Update holdings
+        // Update Holdings
         Holdings holding = holdingsRepository.findByUserIdAndSymbol(userId, order.getSymbol());
         if (holding == null) {
             holding = new Holdings();
@@ -55,16 +57,19 @@ public class OrderController {
             holding.setSymbol(order.getSymbol());
             holding.setQuantity(order.getQuantity());
             holding.setAveragePrice(order.getPrice());
+            holding.setTotalInvested(totalCost);
         } else {
-            double totalValue = (holding.getQuantity() * holding.getAveragePrice()) + (order.getQuantity() * order.getPrice());
+            double totalValue = (holding.getQuantity() * holding.getAveragePrice()) + totalCost;
             int newQuantity = holding.getQuantity() + order.getQuantity();
             holding.setAveragePrice(totalValue / newQuantity);
             holding.setQuantity(newQuantity);
+            holding.setTotalInvested(holding.getTotalInvested() + totalCost); // Update Total Invested
         }
         holdingsRepository.save(holding);
 
         return ResponseEntity.ok("Buy order executed successfully");
     }
+
 
     // Sell Stock API
     @PostMapping("/sell")
@@ -76,10 +81,16 @@ public class OrderController {
             return ResponseEntity.badRequest().body("Insufficient stock holdings");
         }
 
-        // Reduce holdings
+        // Calculate how much of the original investment should be reduced
+        double sellFraction = (double) order.getQuantity() / holding.getQuantity();
+        double amountToReduce = holding.getTotalInvested() * sellFraction;
+
+        // Update Holdings
         holding.setQuantity(holding.getQuantity() - order.getQuantity());
+        holding.setTotalInvested(holding.getTotalInvested() - amountToReduce);
+
         if (holding.getQuantity() == 0) {
-            holdingsRepository.delete(holding);
+            holdingsRepository.delete(holding); // Remove if all sold
         } else {
             holdingsRepository.save(holding);
         }
@@ -97,6 +108,7 @@ public class OrderController {
 
         return ResponseEntity.ok("Sell order executed successfully");
     }
+
 
     // Fetch Order History
     @GetMapping("/history")

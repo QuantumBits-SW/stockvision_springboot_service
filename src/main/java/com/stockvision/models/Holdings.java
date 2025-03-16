@@ -13,4 +13,5 @@ public class Holdings {
 	private String symbol;
 	private int quantity;
 	private double averagePrice;
+	private double totalInvested;
 }

@@ -1,23 +1,29 @@
 package com.stockvision.controllers;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stripe.exception.SignatureVerificationException;
-import com.stripe.model.Event;
-import com.stripe.net.Webhook;
-import com.stockvision.models.Wallet;
-import com.stockvision.repositories.WalletRepository;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.stockvision.models.Wallet;
+import com.stockvision.repositories.WalletRepository;
+import com.stockvision.services.TransactionService;
+import com.stripe.exception.SignatureVerificationException;
+import com.stripe.model.Event;
+import com.stripe.net.Webhook;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/stripe")
@@ -27,12 +33,14 @@ public class StripeWebhookController {
     private String webhookSecret;
 
     private final WalletRepository walletRepository;
+    private final TransactionService transactionService;
     private static final Logger LOGGER = LoggerFactory.getLogger(StripeWebhookController.class);
     private final ObjectMapper objectMapper = new ObjectMapper(); // ✅ JSON parser
 
     @Autowired
-    public StripeWebhookController(WalletRepository walletRepository) {
+    public StripeWebhookController(WalletRepository walletRepository, TransactionService transactionService) {
         this.walletRepository = walletRepository;
+        this.transactionService = transactionService;
     }
 
     @PostMapping("/webhook")
@@ -104,8 +112,11 @@ public class StripeWebhookController {
             wallet.setBalance(wallet.getBalance() + amount);
         }
         walletRepository.save(wallet);
-
         LOGGER.info("Wallet updated successfully for userId: {}", userId);
+        
+        //Adding transactions entry
+        transactionService.insertTransactionEntry(amount, userId,  "deposit", "completed");
+        
         return ResponseEntity.ok("Wallet updated successfully");
     }
 

@@ -6,6 +6,7 @@ import com.stockvision.models.Holdings;
 import com.stockvision.repositories.OrderRepository;
 import com.stockvision.repositories.WalletRepository;
 import com.stockvision.repositories.HoldingsRepository;
+import com.stockvision.services.TransactionService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +17,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
-@CrossOrigin(origins = "http://localhost:5173/")
+@CrossOrigin(origins = {"http://localhost:5173/", "http://localhost:8080/"})
 public class OrderController {
 
     @Autowired
@@ -27,6 +28,9 @@ public class OrderController {
 
     @Autowired
     private HoldingsRepository holdingsRepository;
+
+    @Autowired
+    private TransactionService transactionService;
 
     // Buy Stock API
     @PostMapping("/buy")
@@ -42,6 +46,7 @@ public class OrderController {
         double totalCost = order.getQuantity() * order.getPrice();
         wallet.setBalance(wallet.getBalance() - totalCost);
         walletRepository.save(wallet);
+        transactionService.insertTransactionEntry(-totalCost, userId, "buy trade", "completed");
 
         // Save Order
         order.setUserId(userId);
@@ -99,6 +104,7 @@ public class OrderController {
         Wallet wallet = walletRepository.findByUserId(userId);
         wallet.setBalance(wallet.getBalance() + (order.getQuantity() * order.getPrice()));
         walletRepository.save(wallet);
+        transactionService.insertTransactionEntry((order.getQuantity() * order.getPrice()), userId, "sell trade", "completed");
 
         // Save Order
         order.setUserId(userId);

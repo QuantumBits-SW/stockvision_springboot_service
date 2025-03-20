@@ -19,7 +19,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/wallet")
-@CrossOrigin(origins = "http://localhost:5173/")
+@CrossOrigin(origins = {"http://localhost:5173/", "http://localhost:8080/"})
 public class WalletController {
 
     @Autowired
@@ -105,7 +105,7 @@ public class WalletController {
             walletRepository.save(wallet);
 
             //Adding transactions entry
-            transactionService.insertTransactionEntry(amount, userId, "withdraw", "completed");
+            transactionService.insertTransactionEntry(-amount, userId, "withdraw", "completed");
             
             return ResponseEntity.ok(Map.of("message", "Withdrawal successful", "remainingBalance", wallet.getBalance()));
 

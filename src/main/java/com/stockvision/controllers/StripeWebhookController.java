@@ -35,7 +35,7 @@ public class StripeWebhookController {
     private final WalletRepository walletRepository;
     private final TransactionService transactionService;
     private static final Logger LOGGER = LoggerFactory.getLogger(StripeWebhookController.class);
-    private final ObjectMapper objectMapper = new ObjectMapper(); // ✅ JSON parser
+    private final ObjectMapper objectMapper = new ObjectMapper(); // JSON parser
 
     @Autowired
     public StripeWebhookController(WalletRepository walletRepository, TransactionService transactionService) {

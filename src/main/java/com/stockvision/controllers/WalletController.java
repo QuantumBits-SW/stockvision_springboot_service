@@ -5,6 +5,8 @@ import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import com.stockvision.models.Wallet;
 import com.stockvision.repositories.WalletRepository;
+import com.stockvision.services.TransactionService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +27,9 @@ public class WalletController {
 
     @Autowired
     private TransactionRepository transactionRepository;
+    
+    @Autowired
+    private TransactionService transactionService;
 
     @GetMapping
     public ResponseEntity<?> getWallet(HttpServletRequest request) {
@@ -99,6 +104,9 @@ public class WalletController {
             wallet.setBalance(wallet.getBalance() - amount);
             walletRepository.save(wallet);
 
+            //Adding transactions entry
+            transactionService.insertTransactionEntry(amount, userId, "withdraw", "completed");
+            
             return ResponseEntity.ok(Map.of("message", "Withdrawal successful", "remainingBalance", wallet.getBalance()));
 
         } catch (NumberFormatException e) {

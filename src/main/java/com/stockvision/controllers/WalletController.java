@@ -41,7 +41,11 @@ public class WalletController {
 
         Wallet wallet = walletRepository.findByUserId(userId);
         if (wallet == null) {
-            return ResponseEntity.status(404).body("Wallet not found");
+            Wallet userWallet = new Wallet();
+            userWallet.setBalance(0);
+            userWallet.setUserId(userId);
+            walletRepository.save(userWallet);
+            wallet = userWallet;
         }
 
         // Fetch transactions for this user
